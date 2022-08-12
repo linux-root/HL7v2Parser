@@ -30,12 +30,23 @@ class HL7ParserSpec extends AnyFunSuite{
     println(json)
   }
 
-  /***
-   * This sample is NOT 2.3 version as original sample in document
-   */
-  test("Reste Lab sample") {
+  test("Reste Lab sample in 2.8 version") {
     val sample =
       """MSH|^~\&|FDHL7|RESTE LAB||P1055|201007231634||ORU^R01|P1055-00000f47907|P|2.8|1|NE|NE
+        #PID|1|JQ4988|108512373||DONAL^DUCK||02/10/1948^53 Y|M|||
+        #OBX|1|NM|0135-4^TotalProtein||7.3|gm/dl|5.9-8.4||||F
+        #OBX|2|NM|0033-1^Albumin||3.9|gm/dl|5.9-8.4||||F
+        #FTS|1|
+        """.ER7StripMargin
+
+    val json = HL7Parser.textER7ToJson(sample)
+    println(json)
+  }
+
+
+  test("Reste Lab sample in 2.3 version") {
+    val sample =
+      """MSH|^~\&|FDHL7|RESTE LAB||P1055|201007231634||ORU^R01|P1055-00000f47907|P|2.3|1|NE|NE
         #PID|1|JQ4988|108512373||DONAL^DUCK||02/10/1948^53 Y|M|||
         #OBX|1|NM|0135-4^TotalProtein||7.3|gm/dl|5.9-8.4||||F
         #OBX|2|NM|0033-1^Albumin||3.9|gm/dl|5.9-8.4||||F

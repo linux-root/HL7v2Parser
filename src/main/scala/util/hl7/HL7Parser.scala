@@ -8,6 +8,7 @@ import ca.uhn.hl7v2.model.v28.message.{ADT_A01 => ADT_A01_28}
 import ca.uhn.hl7v2.model.v22.message.{ADT_A01 => ADT_A01_22}
 import ca.uhn.hl7v2.model.v23.message.{ADT_A01 => ADT_A01_23}
 import ca.uhn.hl7v2.model.v28.message.{ORU_R01 => ORU_R01_28}
+import ca.uhn.hl7v2.model.v23.message.{ORU_R01 => ORU_R01_23}
 import util.hl7.HL7Converter.Syntax.Ops
 
 import scala.util.Try
@@ -26,6 +27,8 @@ object HL7Parser {
   def textER7ToJson(text: String): Option[JsValue] = {
     HAPI.parse(text).map {
       case m: ADT_A01_28 =>
+        m.toJson
+      case m: ORU_R01_23 =>
         m.toJson
       case m: ORU_R01_28 =>
         m.toJson

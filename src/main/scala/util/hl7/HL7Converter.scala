@@ -2,11 +2,13 @@ package util.hl7
 
 import ca.uhn.hl7v2.model.Message
 import ca.uhn.hl7v2.model.v28.message.{ADT_A01 => ADT_A01_28, ORU_R01 => ORU_R01_28}
+import ca.uhn.hl7v2.model.v23.message.{ORU_R01 => ORU_R01_23}
 import play.api.libs.json.{JsValue, Json}
 import util.hl7.sh.datatype.{CompositeID, MessageType, PatientName}
 import util.hl7.sh.message.HL7Message
 import util.hl7.sh.segment
-import util.hl7.sh.segment.{EventType, ObservationRequest, ObservationResult, PatientIdentification}
+import util.hl7.sh.segment.{EventType, Gender, ObservationRequest, ObservationResult, PatientIdentification}
+
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 /** *
@@ -44,6 +46,10 @@ object HL7Converter {
       PatientName(xpn.getFamilyName.getSurname.getValue, xpn.getGivenName.getValue)
     }.toList
 
+    val gender = Gender.fromIdentifier(pid.getAdministrativeSex.getIdentifier.getValue)
+
+    val dob = pid.getDateTimeOfBirth.getValue
+
     val mshType = msh.getMessageType
 
     val messageType = MessageType(mshType.getMessageCode.getValue, mshType.getTriggerEvent.getValue)
@@ -58,7 +64,10 @@ object HL7Converter {
       msh.getVersionID.getVid1_VersionID.getValue
     )
 
-    sh.message.ADT_A01(header, EventType(evn.getRecordedDateTime.getValue), PatientIdentification(identifiers, names))
+    sh.message.ADT_A01(
+      header,
+      EventType(evn.getRecordedDateTime.getValue),
+      PatientIdentification(identifiers, gender,dob, names))
   }
 
 
@@ -80,6 +89,8 @@ object HL7Converter {
 
     val messageType = MessageType(mshType.getMessageCode.getValue, mshType.getTriggerEvent.getValue)
 
+    val gender = Gender.fromIdentifier(pid.getAdministrativeSex.getIdentifier.getValue)
+
     val header = segment.MessageHeader(
       msh.getFieldSeparator.getValue,
       msh.getEncodingCharacters.getValue,
@@ -90,7 +101,9 @@ object HL7Converter {
       msh.getVersionID.getVid1_VersionID.getValue
     )
 
-    val patientIdentification = PatientIdentification(identifiers, names)
+    val dob = pid.getDateTimeOfBirth.getValue
+
+    val patientIdentification = PatientIdentification(identifiers, gender, dob, names)
 
 
     val observationRequest = ObservationRequest("N/A") // this should be required field but Reste Lab sample doesn't contain this
@@ -105,6 +118,59 @@ object HL7Converter {
         obx.getUnits.getIdentifier.getValue,
         obx.getReferencesRange.getValue,
         obx.getObservationResultStatus.getValue
+      )
+    }.toList
+
+    sh.message.ORU_R01(header, patientIdentification, observationRequest, observationResults)
+  }
+
+  implicit val ORU_R01_23: HL7Converter[ORU_R01_23] = instance { message =>
+    val msh = message.getMSH
+    val response = message.getRESPONSE
+    val pid = response.getPATIENT.getPID
+
+    val identifiers = pid.getPid3_PatientIDInternalID.map { cx =>
+      CompositeID(cx.getID.getValue)
+    }.toList
+
+    val names = pid.getPatientName.map { xpn =>
+      PatientName(xpn.getFamilyName.getValue, xpn.getGivenName.getValue)
+    }.toList
+
+    val mshType = msh.getMessageType
+
+    val messageType = MessageType(mshType.getMessageType.getValue, mshType.getTriggerEvent.getValue)
+
+    val gender = Gender.fromIdentifier(pid.getSex.getValue)
+
+    val header = segment.MessageHeader(
+      msh.getFieldSeparator.getValue,
+      msh.getEncodingCharacters.getValue,
+      msh.getDateTimeOfMessage.toString,
+      messageType,
+      msh.getMessageControlID.getValue,
+      msh.getProcessingID.getProcessingID.getValue,
+      msh.getVersionID.getValue
+    )
+
+    val dob = pid.getDateOfBirth.getTimeOfAnEvent.getValue
+
+    val patientIdentification = PatientIdentification(identifiers, gender, dob, names)
+
+
+    val observationRequest = ObservationRequest("N/A") // this should be required field but Reste Lab sample doesn't contain this
+
+
+    val observationResults =  message.getRESPONSE.getORDER_OBSERVATION.getOBSERVATIONAll.asScala.map { observation =>
+      val obx = observation.getOBX
+      ObservationResult(
+        obx.getSetIDOBX.getValue,
+        obx.getValueType.getValue,
+        obx.getObservationIdentifier.getIdentifier.getValue,
+        obx.getObservationValue.map { value => value.getData.toString }.toList,
+        obx.getUnits.getIdentifier.getValue,
+        obx.getReferencesRange.getValue,
+        obx.getObservResultStatus.getValue
       )
     }.toList
 
